@@ -1,0 +1,64 @@
+const Replicate = require("replicate");
+
+const STYLE_PREFIX =
+  "comic book art in the style of Joe Quesada, heavy black ink areas, bold graphic compositions, " +
+  "high contrast noir lighting, organic expressive linework, dramatic shadows with large solid black shapes, " +
+  "dynamic exaggerated perspectives, fluid action poses, Art Nouveau decorative influences, " +
+  "detailed ink rendering with brush strokes, Marvel Knights aesthetic, professional comic book panel";
+
+module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const { spec } = req.body;
+    if (!spec || !spec.pages)
+      return res.status(400).json({ error: "spec with pages is required" });
+
+    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    const genre = spec.genre || "";
+    const tone = spec.tone || "";
+    const setting = spec.setting || "";
+    const context = [genre, tone, setting].filter(Boolean).join(", ");
+
+    const jobs = [];
+    for (let pi = 0; pi < spec.pages.length; pi++) {
+      const page = spec.pages[pi];
+      const panels = page.panels || [];
+      for (let pn = 0; pn < panels.length; pn++) {
+        const panel = panels[pn];
+        const art = (panel.art || "").trim();
+        if (!art) continue;
+        jobs.push({ pageIndex: pi, panelIndex: pn, art, context });
+      }
+    }
+
+    const results = await Promise.all(
+      jobs.map(async (job) => {
+        const fullPrompt = `${STYLE_PREFIX}, ${job.context ? job.context + ", " : ""}${job.art}`;
+        const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
+          input: {
+            prompt: fullPrompt,
+            width: 768,
+            height: 768,
+            num_inference_steps: 25,
+            guidance_scale: 3.5,
+            output_format: "webp",
+            output_quality: 90,
+          },
+        });
+        const imageUrl =
+          typeof output === "string"
+            ? output
+            : output.url?.() ?? String(output);
+        return { pageIndex: job.pageIndex, panelIndex: job.panelIndex, imageUrl };
+      })
+    );
+
+    res.json({ images: results });
+  } catch (err) {
+    console.error("Spec art generation error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
