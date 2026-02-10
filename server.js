@@ -13,7 +13,10 @@ const replicate = new Replicate({
 });
 
 const STYLE_PREFIX =
-  "professional Marvel comic book art style, bold ink lines, dynamic composition, vivid colors, cel-shaded, dramatic lighting, detailed illustration, comic book panel";
+  "comic book art in the style of Joe Quesada, heavy black ink areas, bold graphic compositions, " +
+  "high contrast noir lighting, organic expressive linework, dramatic shadows with large solid black shapes, " +
+  "dynamic exaggerated perspectives, fluid action poses, Art Nouveau decorative influences, " +
+  "detailed ink rendering with brush strokes, Marvel Knights aesthetic, professional comic book panel";
 
 // ---------------------------------------------------------------------------
 // STUDIO: Generate structured comic specs from a seed
