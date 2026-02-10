@@ -17,12 +17,32 @@ const STYLE_PREFIX =
   "dynamic exaggerated perspectives, fluid action poses, Art Nouveau decorative influences, " +
   "detailed ink rendering with brush strokes, Marvel Knights aesthetic, professional comic book panel";
 
-async function generateImage(prompt) {
+// Build a prompt that includes character visual descriptions for consistency
+function buildPrompt({ art, genre, tone, setting, characters }) {
+  const context = [genre, tone, setting].filter(Boolean).join(", ");
+  const artLower = art.toLowerCase();
+
+  // Find which characters are mentioned in this panel's art direction
+  const charDescs = (characters || [])
+    .filter((c) => c.look && artLower.includes(c.name.toLowerCase()))
+    .map((c) => `${c.name}: ${c.look}`)
+    .join("; ");
+
+  const parts = [STYLE_PREFIX];
+  if (context) parts.push(context);
+  if (charDescs) parts.push(`characters in this panel: ${charDescs}`);
+  parts.push(art);
+
+  return parts.join(", ");
+}
+
+async function generateImage(prompt, seed) {
   const formData = new FormData();
   formData.append("prompt", prompt);
   formData.append("output_format", "webp");
   formData.append("aspect_ratio", "1:1");
   formData.append("style_preset", "comic-book");
+  if (seed != null) formData.append("seed", String(seed));
 
   const response = await fetch(STABILITY_URL, {
     method: "POST",
@@ -76,13 +96,11 @@ app.post("/api/critic/evaluate", async (req, res) => {
 // ---------------------------------------------------------------------------
 app.post("/api/art/panel", async (req, res) => {
   try {
-    const { art, genre, tone, setting, pageIndex, panelIndex } = req.body;
+    const { art, genre, tone, setting, characters, seed, pageIndex, panelIndex } = req.body;
     if (!art) return res.status(400).json({ error: "art direction is required" });
 
-    const context = [genre, tone, setting].filter(Boolean).join(", ");
-    const fullPrompt = `${STYLE_PREFIX}, ${context ? context + ", " : ""}${art}`;
-
-    const imageUrl = await generateImage(fullPrompt);
+    const fullPrompt = buildPrompt({ art, genre, tone, setting, characters });
+    const imageUrl = await generateImage(fullPrompt, seed);
     res.json({ imageUrl, pageIndex, panelIndex });
   } catch (err) {
     console.error("Art generation error:", err);
@@ -95,13 +113,12 @@ app.post("/api/art/panel", async (req, res) => {
 // ---------------------------------------------------------------------------
 app.post("/api/art/spec", async (req, res) => {
   try {
-    const { spec } = req.body;
+    const { spec, characters, seed } = req.body;
     if (!spec || !spec.pages) return res.status(400).json({ error: "spec with pages is required" });
 
     const genre = spec.genre || "";
     const tone = spec.tone || "";
     const setting = spec.setting || "";
-    const context = [genre, tone, setting].filter(Boolean).join(", ");
 
     const jobs = [];
     for (let pi = 0; pi < spec.pages.length; pi++) {
@@ -111,14 +128,14 @@ app.post("/api/art/spec", async (req, res) => {
         const panel = panels[pn];
         const art = (panel.art || "").trim();
         if (!art) continue;
-        jobs.push({ pageIndex: pi, panelIndex: pn, art, context });
+        jobs.push({ pageIndex: pi, panelIndex: pn, art });
       }
     }
 
     const results = await Promise.all(
       jobs.map(async (job) => {
-        const fullPrompt = `${STYLE_PREFIX}, ${job.context ? job.context + ", " : ""}${job.art}`;
-        const imageUrl = await generateImage(fullPrompt);
+        const fullPrompt = buildPrompt({ art: job.art, genre, tone, setting, characters });
+        const imageUrl = await generateImage(fullPrompt, seed);
         return { pageIndex: job.pageIndex, panelIndex: job.panelIndex, imageUrl };
       })
     );

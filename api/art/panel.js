@@ -7,23 +7,37 @@ const STYLE_PREFIX =
   "dynamic exaggerated perspectives, fluid action poses, Art Nouveau decorative influences, " +
   "detailed ink rendering with brush strokes, Marvel Knights aesthetic, professional comic book panel";
 
+function buildPrompt({ art, genre, tone, setting, characters }) {
+  const context = [genre, tone, setting].filter(Boolean).join(", ");
+  const artLower = art.toLowerCase();
+  const charDescs = (characters || [])
+    .filter((c) => c.look && artLower.includes(c.name.toLowerCase()))
+    .map((c) => `${c.name}: ${c.look}`)
+    .join("; ");
+  const parts = [STYLE_PREFIX];
+  if (context) parts.push(context);
+  if (charDescs) parts.push(`characters in this panel: ${charDescs}`);
+  parts.push(art);
+  return parts.join(", ");
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { art, genre, tone, setting, pageIndex, panelIndex } = req.body;
+    const { art, genre, tone, setting, characters, seed, pageIndex, panelIndex } = req.body;
     if (!art) return res.status(400).json({ error: "art direction is required" });
 
-    const context = [genre, tone, setting].filter(Boolean).join(", ");
-    const fullPrompt = `${STYLE_PREFIX}, ${context ? context + ", " : ""}${art}`;
+    const fullPrompt = buildPrompt({ art, genre, tone, setting, characters });
 
     const formData = new FormData();
     formData.append("prompt", fullPrompt);
     formData.append("output_format", "webp");
     formData.append("aspect_ratio", "1:1");
     formData.append("style_preset", "comic-book");
+    if (seed != null) formData.append("seed", String(seed));
 
     const response = await fetch(STABILITY_URL, {
       method: "POST",

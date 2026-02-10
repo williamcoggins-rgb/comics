@@ -13,61 +13,113 @@
   </header>
 
   <main>
-    <!-- STEP 1: Seed Input -->
+    <!-- STEP 1: Input -->
     <section id="step-seed" class="step active" style="display:block">
-      <h2 class="step-title"><span class="step-num">1</span> Story Seed</h2>
-      <p class="step-desc">Describe your comic idea. The engine generates a full structured spec with characters, beats, scenes, and pages — all validated against professional writing rules.</p>
+      <h2 class="step-title"><span class="step-num">1</span> Your Comic</h2>
 
-      <div class="seed-grid">
-        <div class="field">
-          <label for="seed-genre">Genre</label>
-          <input id="seed-genre" type="text" placeholder="superhero noir, sci-fi thriller, fantasy..." value="superhero noir" />
-        </div>
-        <div class="field">
-          <label for="seed-tone">Tone</label>
-          <input id="seed-tone" type="text" placeholder="tense, humorous, dark..." value="tense, propulsive" />
-        </div>
-        <div class="field">
-          <label for="seed-hook">Hook</label>
-          <input id="seed-hook" type="text" placeholder="a stolen identity, a betrayal..." value="a stolen identity" />
-        </div>
-        <div class="field">
-          <label for="seed-setting">Setting</label>
-          <input id="seed-setting" type="text" placeholder="flooded megacity, 1940s Brooklyn..." value="a city where power hides behind bureaucracy" />
-        </div>
-        <div class="field">
-          <label for="seed-pages">Page Count</label>
-          <select id="seed-pages">
-            <option value="4">4 pages</option>
-            <option value="6" selected>6 pages</option>
-            <option value="8">8 pages</option>
-            <option value="12">12 pages</option>
-            <option value="22">22 pages (full issue)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="seed-count">Ideas to Generate</label>
-          <select id="seed-count">
-            <option value="1">1</option>
-            <option value="3" selected>3</option>
-            <option value="5">5</option>
-          </select>
-        </div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="script">My Script</button>
+        <button class="mode-tab" data-mode="generate">Generate Ideas</button>
       </div>
 
-      <button id="btn-generate" class="generate-btn">Generate Comic Specs</button>
+      <!-- ============ MY SCRIPT MODE ============ -->
+      <div id="mode-script" class="mode-panel">
+        <p class="step-desc">Paste your comic script below. Define each character's visual appearance so the art stays consistent across panels.</p>
+
+        <div class="seed-grid">
+          <div class="field">
+            <label for="script-genre">Genre</label>
+            <input id="script-genre" type="text" placeholder="superhero noir, sci-fi..." value="superhero noir" />
+          </div>
+          <div class="field">
+            <label for="script-tone">Tone</label>
+            <input id="script-tone" type="text" placeholder="tense, dark, humorous..." value="tense, propulsive" />
+          </div>
+          <div class="field" style="grid-column: 1 / -1">
+            <label for="script-setting">Setting</label>
+            <input id="script-setting" type="text" placeholder="flooded megacity, 1940s Brooklyn..." value="a dark cyberpunk city at night" />
+          </div>
+        </div>
+
+        <h3 class="section-label">Characters</h3>
+        <p class="section-hint">Describe exactly what each character looks like. This is injected into every panel they appear in for visual consistency.</p>
+        <div id="character-list"></div>
+        <button id="btn-add-character" class="secondary-btn" style="margin-bottom:1.5rem">+ Add Character</button>
+
+        <h3 class="section-label">Script</h3>
+        <p class="section-hint">Write page-by-page, panel-by-panel. Format example:</p>
+        <pre class="format-hint">PAGE 1
+Panel 1: Wide shot of the city at night, rain falling, neon signs.
+CAPTION: The city never sleeps.
+Panel 2: Close-up on Mara walking through a crowd.
+MARA: I know you're watching me.
+
+PAGE 2
+Panel 1: Vesper stands in a high-rise office looking down.
+Panel 2: Mara enters a dark alley, hand on holster.
+CAPTION: Time to end this.</pre>
+        <div class="field">
+          <textarea id="script-input" rows="18" placeholder="PAGE 1&#10;Panel 1: Wide establishing shot of...&#10;CAPTION: ...&#10;Panel 2: Close-up on...&#10;CHARACTER: dialogue...&#10;&#10;PAGE 2&#10;Panel 1: ..."></textarea>
+        </div>
+
+        <button id="btn-parse-script" class="generate-btn">Generate Art from Script</button>
+      </div>
+
+      <!-- ============ GENERATE MODE (existing) ============ -->
+      <div id="mode-generate" class="mode-panel hidden">
+        <p class="step-desc">Describe your comic idea. The engine generates a full structured spec with characters, beats, scenes, and pages — all validated against professional writing rules.</p>
+
+        <div class="seed-grid">
+          <div class="field">
+            <label for="seed-genre">Genre</label>
+            <input id="seed-genre" type="text" placeholder="superhero noir, sci-fi thriller, fantasy..." value="superhero noir" />
+          </div>
+          <div class="field">
+            <label for="seed-tone">Tone</label>
+            <input id="seed-tone" type="text" placeholder="tense, humorous, dark..." value="tense, propulsive" />
+          </div>
+          <div class="field">
+            <label for="seed-hook">Hook</label>
+            <input id="seed-hook" type="text" placeholder="a stolen identity, a betrayal..." value="a stolen identity" />
+          </div>
+          <div class="field">
+            <label for="seed-setting">Setting</label>
+            <input id="seed-setting" type="text" placeholder="flooded megacity, 1940s Brooklyn..." value="a city where power hides behind bureaucracy" />
+          </div>
+          <div class="field">
+            <label for="seed-pages">Page Count</label>
+            <select id="seed-pages">
+              <option value="4">4 pages</option>
+              <option value="6" selected>6 pages</option>
+              <option value="8">8 pages</option>
+              <option value="12">12 pages</option>
+              <option value="22">22 pages (full issue)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="seed-count">Ideas to Generate</label>
+            <select id="seed-count">
+              <option value="1">1</option>
+              <option value="3" selected>3</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="btn-generate" class="generate-btn">Generate Comic Specs</button>
+      </div>
     </section>
 
     <!-- Loading -->
     <section id="loading" class="loading hidden">
       <div class="spinner"></div>
-      <p id="loading-text">Generating specs...</p>
+      <p id="loading-text">Generating...</p>
     </section>
 
     <!-- STEP 2: Spec Review & Selection -->
     <section id="step-review" class="step hidden">
       <h2 class="step-title"><span class="step-num">2</span> Review Specs</h2>
-      <p class="step-desc">The engine generated these specs and validated them against writing rules (Priest, Stan Lee, Moore, D'Costa, Myers, Sloane). Pick one to bring to life.</p>
+      <p class="step-desc">The engine generated these specs and validated them against writing rules. Pick one to bring to life.</p>
 
       <div id="spec-cards" class="spec-cards"></div>
 
@@ -76,40 +128,27 @@
           <h3 id="detail-title"></h3>
           <div id="detail-gate" class="gate-badge"></div>
         </div>
-
-        <!-- Rule Results -->
         <div id="detail-rules" class="rules-panel"></div>
-
-        <!-- Story Summary -->
         <div class="detail-section">
           <h4>Story</h4>
           <div id="detail-story" class="detail-body"></div>
         </div>
-
-        <!-- Characters -->
         <div class="detail-section">
           <h4>Characters</h4>
           <div id="detail-characters" class="detail-body"></div>
         </div>
-
-        <!-- Beats -->
         <div class="detail-section">
           <h4>Story Beats</h4>
           <div id="detail-beats" class="detail-body"></div>
         </div>
-
-        <!-- Pages/Panels breakdown -->
         <div class="detail-section">
           <h4>Pages &amp; Panels</h4>
           <div id="detail-pages" class="detail-body"></div>
         </div>
-
-        <!-- Suggestions from engine -->
         <div id="detail-suggestions-wrap" class="detail-section hidden">
           <h4>Engine Suggestions</h4>
           <div id="detail-suggestions" class="detail-body"></div>
         </div>
-
         <div class="detail-actions">
           <button id="btn-back-seeds" class="secondary-btn">Back to Seeds</button>
           <button id="btn-generate-art" class="generate-btn">Generate Art for This Spec</button>
@@ -120,12 +159,12 @@
     <!-- STEP 3: Art Generation / Comic View -->
     <section id="step-art" class="step hidden">
       <h2 class="step-title"><span class="step-num">3</span> Comic Pages</h2>
-      <p class="step-desc">Art is being generated for each panel via Replicate (Flux 1.1 Pro). Panels appear as they complete.</p>
+      <p class="step-desc">Art is being generated for each panel via Stability AI. Panels appear as they complete.</p>
 
       <div id="comic-pages"></div>
 
       <div class="detail-actions">
-        <button id="btn-back-review" class="secondary-btn">Back to Spec</button>
+        <button id="btn-back-start" class="secondary-btn">Back</button>
         <button id="btn-download" class="secondary-btn">Print / Download</button>
       </div>
     </section>
