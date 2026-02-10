@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comic Creator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>COMIC CREATOR</h1>
+    <p class="subtitle">AI-Powered Marvel-Style Comic Generator</p>
+  </header>
+
+  <main>
+    <!-- Story Input Section -->
+    <section class="input-section">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="story">Story Mode</button>
+        <button class="mode-btn" data-mode="panels">Panel Mode</button>
+      </div>
+
+      <!-- Story Mode -->
+      <div id="story-mode" class="mode-content active">
+        <label for="story-input">Write your story:</label>
+        <textarea id="story-input" rows="5" placeholder="A hero stands on a rooftop overlooking the city at night. Lightning cracks across the sky. The villain emerges from the shadows below. An epic battle begins between them."></textarea>
+        <div class="controls-row">
+          <div class="panel-count-control">
+            <label for="panel-count">Panels:</label>
+            <select id="panel-count">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+          <div class="layout-control">
+            <label for="layout-select">Layout:</label>
+            <select id="layout-select">
+              <option value="grid-2x2">2x2 Grid</option>
+              <option value="grid-2x3">2x3 Grid</option>
+              <option value="vertical">Vertical Strip</option>
+              <option value="dynamic">Dynamic</option>
+            </select>
+          </div>
+          <button id="generate-story-btn" class="generate-btn">Generate Comic</button>
+        </div>
+      </div>
+
+      <!-- Panel Mode -->
+      <div id="panel-mode" class="mode-content">
+        <div id="panel-inputs">
+          <div class="panel-input-row">
+            <label>Panel 1:</label>
+            <input type="text" class="panel-prompt" placeholder="A masked hero leaps between skyscrapers at sunset" />
+          </div>
+          <div class="panel-input-row">
+            <label>Panel 2:</label>
+            <input type="text" class="panel-prompt" placeholder="Close-up of the hero landing on a rooftop, cape flowing" />
+          </div>
+          <div class="panel-input-row">
+            <label>Panel 3:</label>
+            <input type="text" class="panel-prompt" placeholder="The villain appears in a burst of energy" />
+          </div>
+          <div class="panel-input-row">
+            <label>Panel 4:</label>
+            <input type="text" class="panel-prompt" placeholder="Epic clash between hero and villain, energy radiating" />
+          </div>
+        </div>
+        <div class="controls-row">
+          <button id="add-panel-btn" class="secondary-btn">+ Add Panel</button>
+          <div class="layout-control">
+            <label for="layout-select-panel">Layout:</label>
+            <select id="layout-select-panel">
+              <option value="grid-2x2">2x2 Grid</option>
+              <option value="grid-2x3">2x3 Grid</option>
+              <option value="vertical">Vertical Strip</option>
+              <option value="dynamic">Dynamic</option>
+            </select>
+          </div>
+          <button id="generate-panels-btn" class="generate-btn">Generate Comic</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading State -->
+    <section id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loading-text">Generating your comic...</p>
+    </section>
+
+    <!-- Comic Display -->
+    <section id="comic-display" class="comic-display hidden">
+      <div id="comic-page" class="comic-page grid-2x2">
+        <!-- Panels injected dynamically -->
+      </div>
+      <div class="comic-actions">
+        <button id="download-btn" class="secondary-btn">Download Page</button>
+        <button id="regenerate-btn" class="secondary-btn">Regenerate</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
