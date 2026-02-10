@@ -1,11 +1,9 @@
 {
   "functions": {
     "api/studio/generate.py": {
-      "runtime": "@vercel/python@latest",
       "includeFiles": "engine/**"
     },
     "api/critic/evaluate.py": {
-      "runtime": "@vercel/python@latest",
       "includeFiles": "engine/**"
     }
   }
