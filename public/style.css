@@ -49,8 +49,8 @@ main {
 }
 
 /* Steps */
-.step { display: none; }
-.step.active { display: block; }
+.step { display: none !important; }
+.step.active { display: block !important; }
 
 .step-title {
   font-size: 1.3rem;
