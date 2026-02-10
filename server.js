@@ -2,27 +2,59 @@ require("dotenv").config();
 const express = require("express");
 const Replicate = require("replicate");
 const path = require("path");
+const { generateSpecs, evaluateSpec } = require("./engine/bridge");
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Generate a single comic panel image
-app.post("/api/generate-panel", async (req, res) => {
+const STYLE_PREFIX =
+  "professional Marvel comic book art style, bold ink lines, dynamic composition, vivid colors, cel-shaded, dramatic lighting, detailed illustration, comic book panel";
+
+// ---------------------------------------------------------------------------
+// STUDIO: Generate structured comic specs from a seed
+// ---------------------------------------------------------------------------
+app.post("/api/studio/generate", async (req, res) => {
   try {
-    const { prompt, panelIndex } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: "prompt is required" });
-    }
+    const { seed = {}, n = 3, applyFixes = "suggest" } = req.body;
+    const result = await generateSpecs({ seed, n, applyFixes, includeResults: true });
+    res.json(result);
+  } catch (err) {
+    console.error("Studio generate error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const stylePrefix =
-      "professional Marvel comic book art style, bold ink lines, dynamic composition, vivid colors, cel-shaded, dramatic lighting, detailed illustration, comic book panel";
+// ---------------------------------------------------------------------------
+// CRITIC: Evaluate / validate an existing spec
+// ---------------------------------------------------------------------------
+app.post("/api/critic/evaluate", async (req, res) => {
+  try {
+    const { spec, applyFixes = "suggest", fullReport = false } = req.body;
+    if (!spec) return res.status(400).json({ error: "spec is required" });
+    const result = await evaluateSpec({ spec, applyFixes, fullReport });
+    res.json(result);
+  } catch (err) {
+    console.error("Critic evaluate error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const fullPrompt = `${stylePrefix}, ${prompt}`;
+// ---------------------------------------------------------------------------
+// ART: Generate image for a single panel from its art direction
+// ---------------------------------------------------------------------------
+app.post("/api/art/panel", async (req, res) => {
+  try {
+    const { art, genre, tone, setting, pageIndex, panelIndex } = req.body;
+    if (!art) return res.status(400).json({ error: "art direction is required" });
+
+    // Build a rich prompt from the spec's art field + context
+    const context = [genre, tone, setting].filter(Boolean).join(", ");
+    const fullPrompt = `${STYLE_PREFIX}, ${context ? context + ", " : ""}${art}`;
 
     const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
       input: {
@@ -36,35 +68,49 @@ app.post("/api/generate-panel", async (req, res) => {
       },
     });
 
-    // Flux 1.1 Pro returns a single URL string or a FileOutput
     const imageUrl = typeof output === "string" ? output : output.url?.() ?? String(output);
-
-    res.json({ imageUrl, panelIndex });
+    res.json({ imageUrl, pageIndex, panelIndex });
   } catch (err) {
-    console.error("Generation error:", err);
+    console.error("Art generation error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Generate a full comic page (multiple panels)
-app.post("/api/generate-page", async (req, res) => {
+// ---------------------------------------------------------------------------
+// ART: Generate images for an entire spec (all pages/panels)
+// ---------------------------------------------------------------------------
+app.post("/api/art/spec", async (req, res) => {
   try {
-    const { panels } = req.body;
-    if (!panels || !Array.isArray(panels) || panels.length === 0) {
-      return res.status(400).json({ error: "panels array is required" });
+    const { spec } = req.body;
+    if (!spec || !spec.pages) return res.status(400).json({ error: "spec with pages is required" });
+
+    const genre = spec.genre || "";
+    const tone = spec.tone || "";
+    const setting = spec.setting || "";
+    const context = [genre, tone, setting].filter(Boolean).join(", ");
+
+    // Build flat list of generation jobs
+    const jobs = [];
+    for (let pi = 0; pi < spec.pages.length; pi++) {
+      const page = spec.pages[pi];
+      const panels = page.panels || [];
+      for (let pn = 0; pn < panels.length; pn++) {
+        const panel = panels[pn];
+        const art = (panel.art || "").trim();
+        if (!art) continue;
+        jobs.push({ pageIndex: pi, panelIndex: pn, art, context });
+      }
     }
 
-    const stylePrefix =
-      "professional Marvel comic book art style, bold ink lines, dynamic composition, vivid colors, cel-shaded, dramatic lighting, detailed illustration, comic book panel";
-
+    // Generate all in parallel (Replicate handles concurrency)
     const results = await Promise.all(
-      panels.map(async (panel, index) => {
-        const fullPrompt = `${stylePrefix}, ${panel.prompt}`;
+      jobs.map(async (job) => {
+        const fullPrompt = `${STYLE_PREFIX}, ${job.context ? job.context + ", " : ""}${job.art}`;
         const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
           input: {
             prompt: fullPrompt,
-            width: panel.width || 768,
-            height: panel.height || 768,
+            width: 768,
+            height: 768,
             num_inference_steps: 25,
             guidance_scale: 3.5,
             output_format: "webp",
@@ -72,60 +118,21 @@ app.post("/api/generate-page", async (req, res) => {
           },
         });
         const imageUrl = typeof output === "string" ? output : output.url?.() ?? String(output);
-        return { imageUrl, panelIndex: index, prompt: panel.prompt };
+        return { pageIndex: job.pageIndex, panelIndex: job.panelIndex, imageUrl };
       })
     );
 
-    res.json({ panels: results });
+    res.json({ images: results });
   } catch (err) {
-    console.error("Page generation error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Break a story into panel descriptions using a simple approach
-app.post("/api/story-to-panels", async (req, res) => {
-  try {
-    const { story, panelCount } = req.body;
-    if (!story) {
-      return res.status(400).json({ error: "story is required" });
-    }
-
-    const count = panelCount || 4;
-    // Split the story into visual scene descriptions
-    // This is a simple heuristic approach - split by sentences and group them
-    const sentences = story
-      .split(/[.!?]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    const panelsPerGroup = Math.max(1, Math.ceil(sentences.length / count));
-    const panels = [];
-
-    for (let i = 0; i < count; i++) {
-      const start = i * panelsPerGroup;
-      const group = sentences.slice(start, start + panelsPerGroup);
-      if (group.length > 0) {
-        panels.push({
-          prompt: group.join(". "),
-          caption: group.join(". ") + ".",
-        });
-      }
-    }
-
-    // Pad with the last description if we don't have enough panels
-    while (panels.length < count) {
-      panels.push(panels[panels.length - 1]);
-    }
-
-    res.json({ panels: panels.slice(0, count) });
-  } catch (err) {
-    console.error("Story parsing error:", err);
+    console.error("Spec art generation error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Comic generator running at http://localhost:${PORT}`);
+  console.log(`Comic Creator running at http://localhost:${PORT}`);
+  console.log("  Studio API:  POST /api/studio/generate");
+  console.log("  Critic API:  POST /api/critic/evaluate");
+  console.log("  Art API:     POST /api/art/panel | /api/art/spec");
 });
