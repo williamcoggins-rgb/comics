@@ -1,10 +1,36 @@
-const Replicate = require("replicate");
+const STABILITY_URL =
+  "https://api.stability.ai/v2beta/stable-image/generate/core";
 
 const STYLE_PREFIX =
   "comic book art in the style of Joe Quesada, heavy black ink areas, bold graphic compositions, " +
   "high contrast noir lighting, organic expressive linework, dramatic shadows with large solid black shapes, " +
   "dynamic exaggerated perspectives, fluid action poses, Art Nouveau decorative influences, " +
   "detailed ink rendering with brush strokes, Marvel Knights aesthetic, professional comic book panel";
+
+async function generateImage(prompt) {
+  const formData = new FormData();
+  formData.append("prompt", prompt);
+  formData.append("output_format", "webp");
+  formData.append("aspect_ratio", "1:1");
+  formData.append("style_preset", "comic-book");
+
+  const response = await fetch(STABILITY_URL, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+      accept: "application/json",
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Stability AI API error (${response.status}): ${err}`);
+  }
+
+  const data = await response.json();
+  return `data:image/webp;base64,${data.image}`;
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -16,7 +42,6 @@ module.exports = async (req, res) => {
     if (!spec || !spec.pages)
       return res.status(400).json({ error: "spec with pages is required" });
 
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
     const genre = spec.genre || "";
     const tone = spec.tone || "";
     const setting = spec.setting || "";
@@ -37,21 +62,7 @@ module.exports = async (req, res) => {
     const results = await Promise.all(
       jobs.map(async (job) => {
         const fullPrompt = `${STYLE_PREFIX}, ${job.context ? job.context + ", " : ""}${job.art}`;
-        const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
-          input: {
-            prompt: fullPrompt,
-            width: 768,
-            height: 768,
-            num_inference_steps: 25,
-            guidance_scale: 3.5,
-            output_format: "webp",
-            output_quality: 90,
-          },
-        });
-        const imageUrl =
-          typeof output === "string"
-            ? output
-            : output.url?.() ?? String(output);
+        const imageUrl = await generateImage(fullPrompt);
         return { pageIndex: job.pageIndex, panelIndex: job.panelIndex, imageUrl };
       })
     );
